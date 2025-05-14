@@ -26,7 +26,7 @@ module cache #(
   localparam LOG_NUM_SETS = $clog2(NUM_SETS);
   localparam LOG_NUM_WAYS = $clog2(NUM_WAYS);
   localparam LOG_BLOCK_WORDS = $clog2(BLOCK_WORDS);
-  integer i, j, k;
+  integer i, j, k, l;
 
   typedef enum logic [1:0] {read, delay, write} state_t;
   state_t stateNext, stateReg;
@@ -71,10 +71,10 @@ module cache #(
     case (stateReg)
       read: begin
         cacheHit = 1'b0;
-        for (j = 0; j < NUM_WAYS; j++) begin
-          if (tagIndex == SRAM[setIndex][j].tag && SRAM[setIndex][j].v) begin // if match and valid
+        for (l = 0; l < NUM_WAYS; l++) begin
+          if (tagIndex == SRAM[setIndex][l].tag && SRAM[setIndex][l].v) begin // if match and valid
             cacheHit = 1'b1;
-            instruction_i = SRAM[setIndex][j].data[blockIndex];
+            instruction_i = SRAM[setIndex][l].data[blockIndex];
             ready = 1'b1;
           end
         end
