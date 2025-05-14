@@ -44,9 +44,7 @@ module ucsbece154_imem #(
     else
       a_i <= a_i;
   end
-  always @(*) begin
-    
-  end
+  
   always @(*) begin
     if (state_reg == send) begin
       DataIn = rd_o;
