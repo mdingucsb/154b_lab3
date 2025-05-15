@@ -21,8 +21,6 @@ module cache #(
   output logic memReadRequest // asserted when cache miss, lowered when data ready received (assert for roughly T0)
 );
 
-  // need to use v in logic
-
   localparam LOG_NUM_SETS = $clog2(NUM_SETS);
   localparam LOG_NUM_WAYS = $clog2(NUM_WAYS);
   localparam LOG_BLOCK_WORDS = $clog2(BLOCK_WORDS);
@@ -47,7 +45,9 @@ module cache #(
   logic [LOG_NUM_SETS-1:0] setIndex;
   logic [LOG_BLOCK_WORDS-1:0] blockIndex;
   logic cacheHit;
-  logic [WORD_SIZE-1:0] instruction_i;
+  logic [31:0] DataIn;
+  
+  logic [LOG_NUM_WAYS-1:0] hitWay;
 
   logic [LOG_BLOCK_WORDS-1:0] write_wait_counter;
 
@@ -60,35 +60,32 @@ module cache #(
 
   always_comb begin
     // defaults
-    instruction_i = {WORD_SIZE{1'bx}};
     busy = 1'b0;
-    ready = 1'b0;
     memReadAddress = readAddress;
     memReadRequest = 1'b0;
-    cacheHit = 1'bx;
+    ready = 1'b0;
+    cacheHit = 1'b0;
+    hitWay = 2'b00;
 
     // output logic
     case (stateReg)
       read: begin
-        cacheHit = 1'b0;
         for (l = 0; l < NUM_WAYS; l++) begin
           if (tagIndex == SRAM[setIndex][l].tag && SRAM[setIndex][l].v) begin // if match and valid
             cacheHit = 1'b1;
-            instruction_i = SRAM[setIndex][l].data[blockIndex];
-            ready = 1'b1;
+            hitWay = l;
           end
         end
-        if (!cacheHit) begin
+        if (cacheHit)
+          ready = 1'b1;
+        else
           memReadRequest = 1'b1;
-        end
       end
       delay: begin
         memReadRequest = 1'b1;
       end
       write: begin
         busy = 1'b1;
-        if (write_wait_counter == (blockIndex - 1))
-          ready = 1'b1;
       end
     endcase;
   end
@@ -106,19 +103,23 @@ module cache #(
         end
       end
     end else begin
+      DataIn <= memDataIn;
       if (stateReg == write) begin // synchronous write
         SRAM[setIndex][randBits].v <= 1;
         SRAM[setIndex][randBits].tag <= tagIndex;
-        SRAM[setIndex][randBits].data[blockIndex] <= memDataIn;
+        SRAM[setIndex][randBits].data[write_wait_counter] <= DataIn;
       end
-      instruction <= instruction_i; // synchronous read
+      if (stateReg == read && cacheHit)
+        instruction <= SRAM[setIndex][hitWay].data[blockIndex];
+      else
+        instruction <= 32'bx;
+    end
       // how to implement the synchronous write? must occur when correct data is received from SDRAM
       // maybe match block address with that of the incoming data's order?
       // this needs to be based off of DataIn, DataReady signals
       // memReadAddress is the address requested, which is [31:0]. since the entire block is sent over one word at a time, need to pick the right word.
       // do so by remembering memReadAddress[3:2], which is the block offset. that will tell cache when the correct word will arrive.
       // make new counter counting up to block offset of memReadAddress
-    end
   end
 
   // counter for write_wait

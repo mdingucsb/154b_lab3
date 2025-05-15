@@ -44,7 +44,7 @@ module ucsbece154_imem #(
     else
       a_i <= a_i;
   end
-  
+
   always @(*) begin
     if (state_reg == send) begin
       DataIn = rd_o;
@@ -77,7 +77,7 @@ module ucsbece154_imem #(
         if (send_count == BLOCK_WORDS - 1) state_next = idle;
       end
       default: state_next = idle;
-    endcase;
+    endcase
   end
 
   // state reg
