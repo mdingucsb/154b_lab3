@@ -76,10 +76,13 @@ module cache #(
             hitWay = l;
           end
         end
-        if (cacheHit)
+        if (cacheHit) begin
+          instruction = SRAM[setIndex][hitWay].data[blockIndex];
           ready = 1'b1;
-        else
+        end else begin
+          instruction <= 32'bx;
           memReadRequest = 1'b1;
+        end
       end
       delay: begin
         memReadRequest = 1'b1;
@@ -109,10 +112,6 @@ module cache #(
         SRAM[setIndex][randBits].tag <= tagIndex;
         SRAM[setIndex][randBits].data[write_wait_counter] <= DataIn;
       end
-      if (stateReg == read && cacheHit)
-        instruction <= SRAM[setIndex][hitWay].data[blockIndex];
-      else
-        instruction <= 32'bx;
     end
       // how to implement the synchronous write? must occur when correct data is received from SDRAM
       // maybe match block address with that of the incoming data's order?
@@ -144,7 +143,8 @@ module cache #(
             stateNext = read;
           else
             stateNext = delay;
-        end
+        end else
+          stateNext = delay;
       end
       delay: begin
         if (memDataReady)
